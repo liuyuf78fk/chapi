@@ -10,7 +10,7 @@ Many applications and systems need to know their public IP address — yet most 
 
 ---
 
-## 🚀 Features & Performance
+## Features & Performance
 
 - **ChaCha20-Poly1305 encryption** — secure by default, without OpenSSL or TLS bloat  
 - **High-performance UDP server** — extremely lightweight and fast  
@@ -22,7 +22,7 @@ Many applications and systems need to know their public IP address — yet most 
 - **Low memory usage** — chapi-server uses ~1.2 MB RAM on Linux (RSS)
 - **Proven fast in benchmarks** — with 50 concurrent clients, a total of 1000 encrypted requests took approximately 1.5 seconds
 
-### ⚙️ Benchmark Example
+### Benchmark Example
 
 ```
 Total requests: 1000
