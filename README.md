@@ -12,14 +12,15 @@ Many applications and systems need to know their public IP address — yet most 
 
 ## 🚀 Features & Performance
 
-- 🔐 **ChaCha20-Poly1305 encryption** — secure by default, without OpenSSL or TLS bloat  
-- ⚡ **High-performance UDP server** — extremely lightweight and fast  
-- 🧵 **Single-threaded design** — suitable for embedded or minimal Linux environments  
-- 📉 **Minimal overhead** — no TLS handshakes, no HTTP headers, just encrypted IP delivery  
-- 📊 **Rate limiting support** — prevent abuse with per-IP throttling (optional via macro)  
-- 🛡️ **Resilient to attacks** — encrypted communication, strict format validation  
-- 🌱 **Low memory usage** — chapi-server uses ~1.2 MB RAM on Linux (RSS)
-- 🧪 **Proven fast in benchmarks** — with 50 concurrent clients, a total of 1000 encrypted requests took approximately 1.5 seconds
+- **ChaCha20-Poly1305 encryption** — secure by default, without OpenSSL or TLS bloat  
+- **High-performance UDP server** — extremely lightweight and fast  
+- **Single-threaded design** — suitable for embedded or minimal Linux environments  
+- **Minimal overhead** — no TLS handshakes, no HTTP headers, just encrypted IP delivery
+- **One-RTT response** — client gets encrypted IP reply in a single round-trip
+- **Rate limiting support** — prevent abuse with per-IP throttling (optional via macro)  
+- **Resilient to attacks** — encrypted communication, strict format validation  
+- **Low memory usage** — chapi-server uses ~1.2 MB RAM on Linux (RSS)
+- **Proven fast in benchmarks** — with 50 concurrent clients, a total of 1000 encrypted requests took approximately 1.5 seconds
 
 ### ⚙️ Benchmark Example
 
