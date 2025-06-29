@@ -22,6 +22,10 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stddef.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #define SERVER_PORT 10000
 #define KEY_HEX "a01af296150f544a0bb1033731ca243d03628e20bb8ce89a14631b14c6a3551a"
 #define NONCE_LEN crypto_aead_chacha20poly1305_IETF_NPUBBYTES
@@ -37,11 +41,24 @@
 #define RATE_LIMIT_COUNT 1
 #define MAX_CLIENTS 1024
 
-#define LOG_LEVEL 1		// 0=off, 1=errors only, 2=verbose
+#define LOG_LEVEL 2		// 0=off, 1=errors only, 2=verbose
 #define LOG_ERR_MSG(fmt, ...)  do { if (LOG_LEVEL >= 1) syslog(LOG_ERR, fmt, ##__VA_ARGS__); } while (0)
 #define LOG_INFO_MSG(fmt, ...)   do { if (LOG_LEVEL >= 2) syslog(LOG_INFO, fmt, ##__VA_ARGS__); } while (0)
 
+#define SEND_RETRY_LIMIT 3
+#define CMD_GETIP       "GETIP"
+#define CMD_GETIP_LEN   5
+
+#define SOCKET_REUSEADDR_ON  1
+#define SOCKET_REUSEADDR_OFF 0
+
+#define SOCKET_TIMEOUT_SEC 2
+#define SOCKET_TIMEOUT_USEC 0
+
 void hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len);
 int is_valid_ipv4(const char *ip);
+int send_with_retry(int sock, const void *buf, size_t len, int flags,
+		    const struct sockaddr *dest_addr, socklen_t addrlen,
+		    int max_retries);
 
 #endif

@@ -1,12 +1,11 @@
 CC = gcc
-CFLAGS = -O2 -s -Wall
-LDFLAGS = -lsodium
-
+CFLAGS = -Wall -Wextra -O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2
+LDFLAGS = -lsodium -lrt -Wl,-z,now -Wl,-z,relro
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
-SERVER_SRC = chapi-server.c
-CLIENT_SRC = chapi-client.c
+SERVER_SRC = chapi-server.c common.c
+CLIENT_SRC = chapi-client.c common.c
 
 SERVER_BIN = chapi-server
 CLIENT_BIN = chapi-client

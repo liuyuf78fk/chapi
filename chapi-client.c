@@ -31,23 +31,6 @@
 
 #include "common.h"
 
-void hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len)
-{
-	size_t i;
-	unsigned int byte;
-	for (i = 0; i < bin_len; i++) {
-		sscanf(hex + 2 * i, "%2x", &byte);
-		bin[i] = (unsigned char)byte;
-	}
-}
-
-int is_valid_ipv4(const char *ip)
-{
-	struct sockaddr_in sa;
-	int result = inet_pton(AF_INET, ip, &(sa.sin_addr));
-	return result == 1 ? 1 : 0;
-}
-
 int main(void)
 {
 	int sockfd = -1;
@@ -88,7 +71,7 @@ int main(void)
 	unsigned char nonce[NONCE_LEN];
 	randombytes_buf(nonce, NONCE_LEN);
 
-	const char *msg = "GETIP";
+	const char *msg = CMD_GETIP;
 	unsigned char ciphertext[MAX_MSG_LEN];
 	unsigned long long clen;
 
@@ -121,7 +104,7 @@ int main(void)
 	free(sendbuf);
 	sendbuf = NULL;
 
-	struct timeval timeout = { 2, 0 };
+	struct timeval timeout = { SOCKET_TIMEOUT_SEC, SOCKET_TIMEOUT_USEC };
 	if (setsockopt
 	    (sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
 		perror("setsockopt failed");
