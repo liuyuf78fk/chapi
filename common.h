@@ -26,15 +26,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#define SERVER_PORT 10000
+#define DEFAULT_PORT 10000
 #define KEY_HEX "a01af296150f544a0bb1033731ca243d03628e20bb8ce89a14631b14c6a3551a"
 #define NONCE_LEN crypto_aead_chacha20poly1305_IETF_NPUBBYTES
 #define KEY_LEN crypto_aead_chacha20poly1305_IETF_KEYBYTES
 #define MAC_LEN crypto_aead_chacha20poly1305_IETF_ABYTES
 #define MAX_MSG_LEN 256
 
-#define SERVER_BIND_ADDR   "0.0.0.0"
-#define SERVER_PUBLIC_ADDR "127.0.0.1"
+#define DEFAULT_BIND_ADDR   "0.0.0.0"
+#define DEFAULT_SERVER_ADDR "127.0.0.1"
 
 //#define ENABLE_RATE_LIMIT
 #define RATE_LIMIT_WINDOW 6
@@ -54,6 +54,8 @@
 
 #define SOCKET_TIMEOUT_SEC 2
 #define SOCKET_TIMEOUT_USEC 0
+
+#define VERSION "v1.0.0"
 
 void hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len);
 int is_valid_ipv4(const char *ip);

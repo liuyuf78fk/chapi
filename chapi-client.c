@@ -28,16 +28,138 @@
 #include <sys/socket.h>
 #include <ctype.h>
 #include <errno.h>
+#include <netdb.h>
+#include <getopt.h>
 
 #include "common.h"
 
-int main(void)
+int resolve_server_address(const char *host, int port,
+			   struct sockaddr_in *out_addr)
+{
+	if (!host || !out_addr) {
+		fprintf(stderr, "resolve_server_address: invalid argument\n");
+		return -1;
+	}
+
+	struct addrinfo hints;
+	struct addrinfo *result = NULL;
+	char port_str[6];
+
+	snprintf(port_str, sizeof(port_str), "%d", port);
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = 0;
+
+	int ret = getaddrinfo(host, port_str, &hints, &result);
+	if (ret != 0) {
+		fprintf(stderr, "getaddrinfo failed for host '%s': %s\n", host,
+			gai_strerror(ret));
+		return -2;
+	}
+
+	if (result->ai_addrlen != sizeof(struct sockaddr_in)) {
+		fprintf(stderr, "Unexpected sockaddr size\n");
+		freeaddrinfo(result);
+		return -3;
+	}
+
+	memcpy(out_addr, result->ai_addr, sizeof(struct sockaddr_in));
+
+	freeaddrinfo(result);
+	return 0;
+}
+
+void print_usage(const char *progname)
+{
+	fprintf(stderr,
+		"Usage: %s [OPTIONS] [server_address]\n"
+		"Options:\n"
+		"  -v, --version          Show version and exit\n"
+		"  -p, --port PORT        Specify server port (1-65535)\n"
+		"  -6, --ipv6             Use IPv6 (currently unsupported)\n"
+		"  -h, --help             Show this help message\n", progname);
+}
+
+int is_number(const char *s)
+{
+	if (!s || !*s)
+		return 0;
+	while (*s) {
+		if (!isdigit((unsigned char)*s))
+			return 0;
+		s++;
+	}
+	return 1;
+}
+
+int main(int argc, char *argv[])
 {
 	int sockfd = -1;
 	unsigned char *sendbuf = NULL;
-	int ret = -1;
+	int exit_code = -1;
 	ssize_t sent = -1;
 	ssize_t bytes_received = -1;
+
+	char server_addr_str[256] = DEFAULT_SERVER_ADDR;
+
+	int server_port = DEFAULT_PORT;
+	int ipv6_flag = 0;
+
+	static struct option long_options[] = {
+		{"version", no_argument, 0, 'v'},
+		{"port", required_argument, 0, 'p'},
+		{"ipv6", no_argument, 0, '6'},
+		{"help", no_argument, 0, 'h'},
+		{0, 0, 0, 0}
+	};
+
+	int opt, option_index = 0;
+	while ((opt =
+		getopt_long(argc, argv, "vp:6h", long_options,
+			    &option_index)) != -1) {
+		switch (opt) {
+		case 'v':
+			fprintf(stdout, "chapi-client %s\n", VERSION);
+			fprintf(stdout, "Build: %s %s\n", __DATE__, __TIME__);
+			return 0;
+		case 'p':
+			if (!is_number(optarg)) {
+				fprintf(stderr, "invalid port number '%s'\n",
+					optarg);
+				goto err;
+			}
+			server_port = atoi(optarg);
+			if (server_port < 1 || server_port > 65535) {
+				fprintf(stderr,
+					"port must be between 1 and 65535\n");
+				goto err;
+			}
+			break;
+		case '6':
+			ipv6_flag = 1;
+			break;
+		case 'h':
+			print_usage(argv[0]);
+			return 0;
+		case '?':
+		default:
+			print_usage(argv[0]);
+			goto err;
+		}
+	}
+
+	if (optind < argc) {
+		strncpy(server_addr_str, argv[optind],
+			sizeof(server_addr_str) - 1);
+		server_addr_str[sizeof(server_addr_str) - 1] = '\0';
+	}
+
+	if (ipv6_flag) {
+		fprintf(stderr, "IPv6 is not supported yet.\n");
+		goto err;
+	}
 
 	if (sodium_init() < 0) {
 		fprintf(stderr, "libsodium init failed\n");
@@ -59,12 +181,12 @@ int main(void)
 		goto err;
 	}
 
-	struct sockaddr_in servaddr;
-	memset(&servaddr, 0, sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = htons(SERVER_PORT);
-	if (inet_pton(AF_INET, SERVER_PUBLIC_ADDR, &servaddr.sin_addr) <= 0) {
-		perror("inet_pton failed");
+	struct sockaddr_in server_sockaddr;
+	int status =
+	    resolve_server_address(server_addr_str, server_port,
+				   &server_sockaddr);
+	if (status != 0) {
+		fprintf(stderr, "Failed to resolve server address\n");
 		goto err;
 	}
 
@@ -94,7 +216,8 @@ int main(void)
 	memcpy(sendbuf + NONCE_LEN, ciphertext, clen);
 
 	sent = sendto(sockfd, sendbuf, NONCE_LEN + clen, 0,
-		      (const struct sockaddr *)&servaddr, sizeof(servaddr));
+		      (const struct sockaddr *)&server_sockaddr,
+		      sizeof(server_sockaddr));
 
 	if (sent < 0) {
 		perror("sendto failed");
@@ -157,12 +280,12 @@ int main(void)
 	}
 
 	printf("%s\n", decrypted);
-	ret = 0;
+	exit_code = 0;
 
  err:
 	if (sendbuf)
 		free(sendbuf);
 	if (sockfd >= 0)
 		close(sockfd);
-	return ret;
+	return exit_code;
 }

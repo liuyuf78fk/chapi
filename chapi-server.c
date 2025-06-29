@@ -167,8 +167,9 @@ int main(void)
 {
 	atexit(cleanup);
 	openlog("chapi-server", LOG_PID, LOG_DAEMON);
-	LOG_INFO_MSG("Starting chapi-server v1.0 (Build: %s %s)", __DATE__,
-		     __TIME__);
+	LOG_INFO_MSG("Starting chapi-server %s (Build: %s %s)", VERSION,
+		     __DATE__, __TIME__);
+
 	setup_signal_handlers();
 	if (sodium_init() < 0) {
 		LOG_ERR_MSG("libsodium init failed");
@@ -184,8 +185,8 @@ int main(void)
 	struct sockaddr_in servaddr;
 	memset(&servaddr, 0, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = inet_addr(SERVER_BIND_ADDR);
-	servaddr.sin_port = htons(SERVER_PORT);
+	servaddr.sin_addr.s_addr = inet_addr(DEFAULT_BIND_ADDR);
+	servaddr.sin_port = htons(DEFAULT_PORT);
 
 	int opt = SOCKET_REUSEADDR_ON;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
@@ -195,13 +196,13 @@ int main(void)
 
 	if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) <
 	    0) {
-		LOG_ERR_MSG("bind failed,port %d", SERVER_PORT);
+		LOG_ERR_MSG("bind failed,port %d", DEFAULT_PORT);
 		close(sockfd);
 		return -1;
 	}
 
-	LOG_INFO_MSG("Server started on %s:%d\n", SERVER_BIND_ADDR,
-		     SERVER_PORT);
+	LOG_INFO_MSG("Server started on %s:%d\n", DEFAULT_BIND_ADDR,
+		     DEFAULT_PORT);
 
 	hex_to_bin(KEY_HEX, key, KEY_LEN);
 
