@@ -25,6 +25,13 @@
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <pwd.h>
+#include <sys/types.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <sodium.h>
+
+#define KEY_FILE_PATH ".chapi/.chapi.key"
 
 #define DEFAULT_PORT 10000
 #define KEY_HEX "a01af296150f544a0bb1033731ca243d03628e20bb8ce89a14631b14c6a3551a"
@@ -52,15 +59,16 @@
 #define SOCKET_REUSEADDR_ON  1
 #define SOCKET_REUSEADDR_OFF 0
 
-#define SOCKET_TIMEOUT_SEC 2
+#define SOCKET_TIMEOUT_SEC 1
 #define SOCKET_TIMEOUT_USEC 0
 
 #define VERSION "v1.0.0"
 
-void hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len);
+int hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len);
 int is_valid_ipv4(const char *ip);
 int send_with_retry(int sock, const void *buf, size_t len, int flags,
 		    const struct sockaddr *dest_addr, socklen_t addrlen,
 		    int max_retries);
+int load_key(unsigned char *key_out);
 
 #endif

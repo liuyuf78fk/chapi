@@ -174,7 +174,11 @@ int main(int argc, char *argv[])
 	}
 
 	unsigned char key[KEY_LEN];
-	hex_to_bin(KEY_HEX, key, KEY_LEN);
+	if (load_key(key) != 0) {
+		fprintf(stderr,
+			"Fatal: failed to load valid key from file or macro.\n");
+		goto err;
+	}
 
 	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		perror("socket creation failed");
@@ -182,9 +186,8 @@ int main(int argc, char *argv[])
 	}
 
 	struct sockaddr_in server_sockaddr;
-	int status =
-	    resolve_server_address(server_addr_str, server_port,
-				   &server_sockaddr);
+	int status = resolve_server_address(server_addr_str, server_port,
+					    &server_sockaddr);
 	if (status != 0) {
 		fprintf(stderr, "Failed to resolve server address\n");
 		goto err;

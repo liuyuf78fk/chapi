@@ -30,7 +30,7 @@
 
 #include "common.h"
 
-void hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len)
+int hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len)
 {
 	size_t i;
 	unsigned int byte;
@@ -38,6 +38,7 @@ void hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len)
 		sscanf(hex + 2 * i, "%2x", &byte);
 		bin[i] = (unsigned char)byte;
 	}
+	return 0;
 }
 
 int is_valid_ipv4(const char *ip)
@@ -86,4 +87,53 @@ int send_with_retry(int sock, const void *buf, size_t len, int flags,
 	}
 	LOG_ERR_MSG("sendto failed after %d attempts", max_retries);
 	return -1;
+}
+
+int load_key(unsigned char *key_out)
+{
+    char path[512];
+    const char *home = getenv("HOME");
+    FILE *fp = NULL;
+    char hex[KEY_LEN * 2 + 2] = { 0 };
+
+    if (!home) {
+        struct passwd *pw = getpwuid(getuid());
+        if (pw)
+            home = pw->pw_dir;
+    }
+
+    if (!home)
+        goto fail;
+
+    snprintf(path, sizeof(path), "%s/%s", home, KEY_FILE_PATH);
+
+    fp = fopen(path, "r");
+    if (!fp)
+        goto fail;
+
+    if (!fgets(hex, sizeof(hex), fp))
+        goto fail;
+
+    size_t len = strlen(hex);
+    while (len > 0 && (hex[len - 1] == '\n' || hex[len - 1] == '\r'))
+        hex[--len] = '\0';
+
+    if (len != KEY_LEN * 2)
+        goto fail;
+
+    for (size_t i = 0; i < len; ++i) {
+        if (!isxdigit((unsigned char)hex[i]))
+            goto fail;
+    }
+
+    if (hex_to_bin(hex, key_out, KEY_LEN) != 0)
+        goto fail;
+
+    fclose(fp);
+    return 0;
+
+fail:
+    if (fp)
+        fclose(fp);
+    return hex_to_bin(KEY_HEX, key_out, KEY_LEN);
 }
