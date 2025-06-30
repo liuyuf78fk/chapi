@@ -64,7 +64,7 @@ cd chapi
 ### 3. Generate a shared ChaCha20-Poly1305 key
 
 ```
-./gen_key.sh
+./chapi-genkey.sh
 ```
 
 You will see output like:
