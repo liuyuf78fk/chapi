@@ -204,11 +204,10 @@ int is_rate_limited(const char *ip)
 			if (count >= config.rate_limit_count)
 				return 1;
 
-			clients[i].timestamps[clients[i].index] = now;
-			clients[i].index++;
 			if (clients[i].index >= config.rate_limit_count)
 				clients[i].index = 0;
-
+			clients[i].timestamps[clients[i].index] = now;
+			clients[i].index++;
 			return 0;
 		}
 	}
