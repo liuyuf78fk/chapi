@@ -31,23 +31,29 @@
 #include <ctype.h>
 #include <sodium.h>
 
+#define VERSION "v1.0.1"
+
 #define KEY_FILE_PATH "/etc/chapi/chapi.key"
 #define CONF_FILE_PATH "/etc/chapi/chapi.conf"
 
 #define DEFAULT_PORT 10000
-#define KEY_HEX "a01af296150f544a0bb1033731ca243d03628e20bb8ce89a14631b14c6a3551a"
-#define NONCE_LEN crypto_aead_chacha20poly1305_IETF_NPUBBYTES
-#define KEY_LEN crypto_aead_chacha20poly1305_IETF_KEYBYTES
-#define MAC_LEN crypto_aead_chacha20poly1305_IETF_ABYTES
-#define MAX_MSG_LEN 256
 
 #define DEFAULT_BIND_ADDR   "0.0.0.0"
 #define DEFAULT_SERVER_ADDR "127.0.0.1"
 
 //#define ENABLE_RATE_LIMIT
-#define RATE_LIMIT_WINDOW 6
+#define RATE_LIMIT_WINDOW 1
 #define RATE_LIMIT_COUNT 1
 #define MAX_CLIENTS 1024
+
+#define LOG_LEVEL_DEFAULT 2	// 0=off, 1=errors only, 2=verbose
+
+#define KEY_HEX "a01af296150f544a0bb1033731ca243d03628e20bb8ce89a14631b14c6a3551a"
+
+#define NONCE_LEN crypto_aead_chacha20poly1305_IETF_NPUBBYTES
+#define KEY_LEN crypto_aead_chacha20poly1305_IETF_KEYBYTES
+#define MAC_LEN crypto_aead_chacha20poly1305_IETF_ABYTES
+#define MAX_MSG_LEN 256
 
 #define SEND_RETRY_LIMIT 3
 #define CMD_GETIP       "GETIP"
@@ -62,7 +68,6 @@
 #define KEY_SOURCE_FILE 1
 #define KEY_SOURCE_MACRO 2
 
-#define VERSION "v1.0.1"
 
 int hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len);
 int is_valid_ipv4(const char *ip);

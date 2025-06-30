@@ -238,9 +238,10 @@ int main(void)
 
 	if (load_config(&config) == 0) {
 		g_log_level = config.log_level;
+		LOG_INFO_MSG("Configuration loaded from file successfully.");
 	} else {
-		LOG_ERR_MSG
-		    ("Failed to load configuration file, using default configuration.");
+		LOG_INFO_MSG
+		    ("Failed to load configuration file, using macro-defined defaults.");
 	}
 
 	setup_signal_handlers();
