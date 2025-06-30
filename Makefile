@@ -3,9 +3,16 @@ CFLAGS = -Wall -Wextra -O2 -fstack-protector-strong -D_FORTIFY_SOURCE=2
 LDFLAGS = -lsodium -lrt -Wl,-z,now -Wl,-z,relro
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
+CONFDIR = /etc/chapi
+CONF_FILE = chapi.conf
+KEY_FILE = chapi.key
 
-SERVER_SRC = chapi-server.c common.c
-CLIENT_SRC = chapi-client.c common.c
+
+COMMON_SRC = common.c config.c chapi-log.c ini.c
+COMMON_HDR = common.h config.h chapi-log.h ini.h
+
+SERVER_SRC = chapi-server.c $(COMMON_SRC)
+CLIENT_SRC = chapi-client.c $(COMMON_SRC)
 
 SERVER_BIN = chapi-server
 CLIENT_BIN = chapi-client
@@ -13,17 +20,17 @@ CLIENT_BIN = chapi-client
 SERVICE_FILE = systemd/chapi-server.service
 SERVICE_INSTALL_PATH = /etc/systemd/system/chapi-server.service
 
-.PHONY: all clean install install-binaries install-service enable-service
+.PHONY: all clean install install-binaries install-service install-config enable-service
 
 all: $(SERVER_BIN) $(CLIENT_BIN)
 
-$(SERVER_BIN): $(SERVER_SRC) common.h
+$(SERVER_BIN): $(SERVER_SRC) $(COMMON_HDR)
 	$(CC) $(CFLAGS) -o $@ $(SERVER_SRC) $(LDFLAGS)
 
-$(CLIENT_BIN): $(CLIENT_SRC) common.h
+$(CLIENT_BIN): $(CLIENT_SRC) $(COMMON_HDR)
 	$(CC) $(CFLAGS) -o $@ $(CLIENT_SRC) $(LDFLAGS)
 
-install: all create-user install-binaries install-service enable-service
+install: all create-user install-binaries install-config install-service enable-service
 
 install-client: 
 	install -m 755 $(CLIENT_BIN) $(BINDIR)/
@@ -35,9 +42,30 @@ create-user:
 	else \
 		echo "User chapi already exists, skipping creation."; \
 	fi
+
 install-binaries:
 	install -d $(BINDIR)
 	install -m 755 $(SERVER_BIN) $(BINDIR)/
+
+install-config:
+	install -d -m 755 $(CONFDIR)
+	@if [ ! -f $(CONFDIR)/$(CONF_FILE) ]; then \
+		echo "Installing default config file..."; \
+		install -m 640 $(CONF_FILE) $(CONFDIR)/$(CONF_FILE); \
+		chown root:chapi $(CONFDIR)/$(CONF_FILE); \
+	else \
+		echo "Config file already exists, skipping install: $(CONFDIR)/$(CONF_FILE)"; \
+		echo "Ensuring correct permissions..."; \
+		chown root:chapi $(CONFDIR)/$(CONF_FILE); \
+		chmod 640 $(CONFDIR)/$(CONF_FILE); \
+	fi
+	@if [ -f $(CONFDIR)/$(KEY_FILE) ]; then \
+		echo "Setting ownership and permissions for existing key file..."; \
+		chown root:chapi $(CONFDIR)/$(KEY_FILE); \
+		chmod 640 $(CONFDIR)/$(KEY_FILE); \
+	else \
+		echo "Warning: $(CONFDIR)/$(KEY_FILE) not found, skipping key permission setup."; \
+	fi
 
 install-service:
 	install -d /etc/systemd/system

@@ -27,8 +27,8 @@ printf "Generating ChaCha20-Poly1305 key (256 bits)...\n\n"
 key=$(openssl rand -hex 32) || err 2 "failed to generate random key"
 
 # Prepare directory and save key
-chapi_dir="$HOME/.chapi"
-chapi_keyfile="$chapi_dir/.chapi.key"
+chapi_dir="/etc/chapi"
+chapi_keyfile="$chapi_dir/chapi.key"
 
 mkdir -p "$chapi_dir"                     || err 3 "cannot create directory $chapi_dir"
 
@@ -49,7 +49,15 @@ if [[ -e "$chapi_keyfile" ]]; then
 fi
 
 printf "%s" "$key" > "$chapi_keyfile"      || err 4 "cannot write key to $chapi_keyfile"
-chmod 600 "$chapi_keyfile"                || err 5 "cannot set permissions on $chapi_keyfile"
+
+if id -u chapi >/dev/null 2>&1; then
+    chown root:chapi "$chapi_keyfile" || err 5 "cannot set ownership to root:chapi on $chapi_keyfile"
+    chmod 640 "$chapi_keyfile" || err 6 "cannot set permissions (640) on $chapi_keyfile"
+else
+    echo "Warning: chapi user not found, setting fallback permissions."
+    chmod 755 /etc/chapi || err 5 "cannot set permissions on /etc/chapi"
+    chmod 644 "$chapi_keyfile" || err 6 "cannot set permissions (644) on $chapi_keyfile"
+fi
 
 # Output results
 printf "Success! Your new key is:\n\n  %s\n\n" "$key"
@@ -66,6 +74,6 @@ printf "  2. Load from file (dynamic)\n"
 printf "     chapi will automatically read the key from %s at startup.\n\n" "$chapi_keyfile"
 
 printf "To deploy the same key to another machine, run:\n\n"
-printf "  mkdir -p ~/.chapi && printf '%s' > ~/.chapi/.chapi.key && chmod 600 ~/.chapi/.chapi.key\n\n" "$key"
+printf "  mkdir -p /etc/chapi && printf '%s' > /etc/chapi/chapi.key && chmod 755 /etc/chapi && chmod 644 /etc/chapi/chapi.key\n\n" "$key"
 exit 0
 

@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 	}
 
 	unsigned char key[KEY_LEN];
-	if (load_key(key) != 0) {
+	if (load_key(key, NULL) != 0) {
 		fprintf(stderr,
 			"Fatal: failed to load valid key from file or macro.\n");
 		goto err;

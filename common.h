@@ -31,7 +31,8 @@
 #include <ctype.h>
 #include <sodium.h>
 
-#define KEY_FILE_PATH ".chapi/.chapi.key"
+#define KEY_FILE_PATH "/etc/chapi/chapi.key"
+#define CONF_FILE_PATH "/etc/chapi/chapi.conf"
 
 #define DEFAULT_PORT 10000
 #define KEY_HEX "a01af296150f544a0bb1033731ca243d03628e20bb8ce89a14631b14c6a3551a"
@@ -48,10 +49,6 @@
 #define RATE_LIMIT_COUNT 1
 #define MAX_CLIENTS 1024
 
-#define LOG_LEVEL 2		// 0=off, 1=errors only, 2=verbose
-#define LOG_ERR_MSG(fmt, ...)  do { if (LOG_LEVEL >= 1) syslog(LOG_ERR, fmt, ##__VA_ARGS__); } while (0)
-#define LOG_INFO_MSG(fmt, ...)   do { if (LOG_LEVEL >= 2) syslog(LOG_INFO, fmt, ##__VA_ARGS__); } while (0)
-
 #define SEND_RETRY_LIMIT 3
 #define CMD_GETIP       "GETIP"
 #define CMD_GETIP_LEN   5
@@ -62,13 +59,16 @@
 #define SOCKET_TIMEOUT_SEC 1
 #define SOCKET_TIMEOUT_USEC 0
 
-#define VERSION "v1.0.0"
+#define KEY_SOURCE_FILE 1
+#define KEY_SOURCE_MACRO 2
+
+#define VERSION "v1.0.1"
 
 int hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len);
 int is_valid_ipv4(const char *ip);
 int send_with_retry(int sock, const void *buf, size_t len, int flags,
 		    const struct sockaddr *dest_addr, socklen_t addrlen,
 		    int max_retries);
-int load_key(unsigned char *key_out);
+int load_key(unsigned char *key_out, int *source);
 
 #endif

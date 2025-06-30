@@ -32,6 +32,8 @@
 #include <signal.h>
 #include <errno.h>
 #include <sys/time.h>
+#include "config.h"
+#include "chapi-log.h"
 
 #define LOG_CLIENT_REQUEST(ip) \
     do { \
@@ -53,15 +55,65 @@ static time_t get_monotonic_time()
 
 typedef struct {
 	char ip[INET_ADDRSTRLEN];
-	time_t timestamps[RATE_LIMIT_COUNT];
+	time_t *timestamps;
 	int index;
 } client_entry;
 
+int init_rate_limit(int max_clients);
+void free_rate_limit(void);
+
 volatile sig_atomic_t shutdown_requested = 0;
 static unsigned char key[KEY_LEN];
-static client_entry clients[MAX_CLIENTS];
+static client_entry *clients = NULL;
 static int client_count = 0;
 static int sockfd = 0;
+static struct chapi_config config;
+
+int init_rate_limit(int max_clients)
+{
+	if (max_clients < 1) {
+		return -1;
+	}
+	if (clients != NULL) {
+		free_rate_limit();
+	}
+
+	clients = (client_entry *) calloc(max_clients, sizeof(client_entry));
+	if (!clients) {
+		LOG_ERR_MSG("Failed to allocate memory for clients");
+		return -1;
+	}
+
+	for (int i = 0; i < max_clients; ++i) {
+		clients[i].timestamps =
+		    (time_t *) calloc(config.rate_limit_count, sizeof(time_t));
+		if (!clients[i].timestamps) {
+			LOG_ERR_MSG
+			    ("Failed to allocate timestamps for client %d", i);
+			for (int j = 0; j < i; ++j) {
+				free(clients[j].timestamps);
+			}
+			free(clients);
+			clients = NULL;
+			return -1;
+		}
+	}
+
+	client_count = 0;
+	return 0;
+}
+
+void free_rate_limit()
+{
+	if (clients) {
+		for (int i = 0; i < config.max_clients; ++i) {
+			free(clients[i].timestamps);
+		}
+		free(clients);
+		clients = NULL;
+	}
+	client_count = 0;
+}
 
 void secure_erase(void *ptr, size_t len)
 {
@@ -75,8 +127,10 @@ void cleanup()
 		close(sockfd);
 		sockfd = -1;
 	}
-	closelog();
+	free_rate_limit();
+	LOG_INFO_MSG("Cleaned up rate limit resources");
 	secure_erase(key, KEY_LEN);
+	closelog();
 }
 
 void handle_signal(int sig)
@@ -129,48 +183,76 @@ void get_client_ip(char *ipbuf, size_t buflen,
 
 int is_rate_limited(const char *ip)
 {
-	time_t now = get_monotonic_time();
+	time_t now;
 	int i, j;
+
+	if (!clients || !ip)
+		return 0;
+
+	now = get_monotonic_time();
+
 	for (i = 0; i < client_count; i++) {
 		if (strcmp(clients[i].ip, ip) == 0) {
 			int count = 0;
-			for (j = 0; j < RATE_LIMIT_COUNT; j++) {
+
+			for (j = 0; j < config.rate_limit_count; j++) {
 				if (now - clients[i].timestamps[j] <
-				    RATE_LIMIT_WINDOW) {
+				    config.rate_limit_window)
 					count++;
-				}
 			}
-			if (count >= RATE_LIMIT_COUNT) {
+
+			if (count >= config.rate_limit_count)
 				return 1;
-			}
+
 			clients[i].timestamps[clients[i].index] = now;
 			clients[i].index++;
-			if (clients[i].index >= RATE_LIMIT_COUNT) {
+			if (clients[i].index >= config.rate_limit_count)
 				clients[i].index = 0;
-			}
+
 			return 0;
 		}
 	}
 
-	if (client_count < MAX_CLIENTS) {
-		strncpy(clients[client_count].ip, ip, INET_ADDRSTRLEN);
+	if (client_count < config.max_clients) {
+		strncpy(clients[client_count].ip, ip, INET_ADDRSTRLEN - 1);
+		clients[client_count].ip[INET_ADDRSTRLEN - 1] = '\0';
+
 		memset(clients[client_count].timestamps, 0,
-		       sizeof(clients[client_count].timestamps));
+		       sizeof(time_t) * config.rate_limit_count);
+
 		clients[client_count].timestamps[0] = now;
 		clients[client_count].index = 1;
 		client_count++;
 	}
+
 	return 0;
 }
 
 int main(void)
 {
+
 	atexit(cleanup);
+
 	openlog("chapi-server", LOG_PID, LOG_DAEMON);
 	LOG_INFO_MSG("Starting chapi-server %s (Build: %s %s)", VERSION,
 		     __DATE__, __TIME__);
 
+	if (load_config(&config) == 0) {
+		g_log_level = config.log_level;
+	} else {
+		LOG_ERR_MSG
+		    ("Failed to load configuration file, using default configuration.");
+	}
+
 	setup_signal_handlers();
+
+	if (config.enable_rate_limit) {
+		if (init_rate_limit(config.max_clients) != 0) {
+			LOG_ERR_MSG("Failed to initialize rate limiting");
+			return -1;
+		}
+	}
+
 	if (sodium_init() < 0) {
 		LOG_ERR_MSG("libsodium init failed");
 		return -1;
@@ -185,8 +267,8 @@ int main(void)
 	struct sockaddr_in servaddr;
 	memset(&servaddr, 0, sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = inet_addr(DEFAULT_BIND_ADDR);
-	servaddr.sin_port = htons(DEFAULT_PORT);
+	servaddr.sin_addr.s_addr = inet_addr(config.bind_address);
+	servaddr.sin_port = htons(config.port);
 
 	int opt = SOCKET_REUSEADDR_ON;
 	if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
@@ -196,15 +278,25 @@ int main(void)
 
 	if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) <
 	    0) {
-		LOG_ERR_MSG("bind failed,port %d", DEFAULT_PORT);
+		LOG_ERR_MSG("bind failed,port %d", config.port);
 		close(sockfd);
 		return -1;
 	}
 
-	LOG_INFO_MSG("Server started on %s:%d\n", DEFAULT_BIND_ADDR,
-		     DEFAULT_PORT);
+	LOG_INFO_MSG("Server started on %s:%d\n", config.bind_address,
+		     config.port);
 
-	hex_to_bin(KEY_HEX, key, KEY_LEN);
+	int key_source = 0;
+	if (load_key(key, &key_source) != 0) {
+		LOG_ERR_MSG
+		    ("Fatal: failed to load valid key from file or macro.");
+	} else {
+		if (key_source == KEY_SOURCE_FILE) {
+			LOG_INFO_MSG("Key loaded from file successfully.");
+		} else if (key_source == KEY_SOURCE_MACRO) {
+			LOG_INFO_MSG("Key loaded from macro definition.");
+		}
+	}
 
 	unsigned char buffer[MAX_MSG_LEN] __attribute__((aligned(64)));
 	unsigned char nonce[NONCE_LEN];
@@ -273,13 +365,14 @@ int main(void)
 
 		get_client_ip(ip, sizeof(ip), &cliaddr);
 
-#ifdef ENABLE_RATE_LIMIT
-		if (is_rate_limited(ip)) {
+		if (config.enable_rate_limit == 1) {
+			if (is_rate_limited(ip)) {
 
-			LOG_INFO_MSG("Rate limit exceeded for IP: %s", ip);
-			continue;
+				LOG_INFO_MSG("Rate limit exceeded for IP: %s",
+					     ip);
+				continue;
+			}
 		}
-#endif
 
 		LOG_CLIENT_REQUEST(ip);
 
@@ -331,5 +424,4 @@ int main(void)
 
 	}
 	return 0;
-
 }

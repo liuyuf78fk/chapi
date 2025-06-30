@@ -29,6 +29,7 @@
 #include <syslog.h>
 
 #include "common.h"
+#include "chapi-log.h"
 
 int hex_to_bin(const char *hex, unsigned char *bin, size_t bin_len)
 {
@@ -89,51 +90,42 @@ int send_with_retry(int sock, const void *buf, size_t len, int flags,
 	return -1;
 }
 
-int load_key(unsigned char *key_out)
+int load_key(unsigned char *key_out, int *source)
 {
-    char path[512];
-    const char *home = getenv("HOME");
-    FILE *fp = NULL;
-    char hex[KEY_LEN * 2 + 2] = { 0 };
+	const char *path = KEY_FILE_PATH;
+	FILE *fp = NULL;
+	char hex[KEY_LEN * 2 + 2] = { 0 };
+	fp = fopen(path, "r");
+	if (!fp)
+		goto fail;
 
-    if (!home) {
-        struct passwd *pw = getpwuid(getuid());
-        if (pw)
-            home = pw->pw_dir;
-    }
+	if (!fgets(hex, sizeof(hex), fp))
+		goto fail;
 
-    if (!home)
-        goto fail;
+	size_t len = strlen(hex);
+	while (len > 0 && (hex[len - 1] == '\n' || hex[len - 1] == '\r'))
+		hex[--len] = '\0';
 
-    snprintf(path, sizeof(path), "%s/%s", home, KEY_FILE_PATH);
+	if (len != KEY_LEN * 2)
+		goto fail;
+	for (size_t i = 0; i < len; ++i) {
+		if (!isxdigit((unsigned char)hex[i]))
+			goto fail;
+	}
 
-    fp = fopen(path, "r");
-    if (!fp)
-        goto fail;
+	if (hex_to_bin(hex, key_out, KEY_LEN) != 0)
+		goto fail;
 
-    if (!fgets(hex, sizeof(hex), fp))
-        goto fail;
+	fclose(fp);
+	if (source)
+		*source = KEY_SOURCE_FILE;
+	return 0;
 
-    size_t len = strlen(hex);
-    while (len > 0 && (hex[len - 1] == '\n' || hex[len - 1] == '\r'))
-        hex[--len] = '\0';
-
-    if (len != KEY_LEN * 2)
-        goto fail;
-
-    for (size_t i = 0; i < len; ++i) {
-        if (!isxdigit((unsigned char)hex[i]))
-            goto fail;
-    }
-
-    if (hex_to_bin(hex, key_out, KEY_LEN) != 0)
-        goto fail;
-
-    fclose(fp);
-    return 0;
-
-fail:
-    if (fp)
-        fclose(fp);
-    return hex_to_bin(KEY_HEX, key_out, KEY_LEN);
+ fail:
+	if (fp)
+		fclose(fp);
+	int ret = hex_to_bin(KEY_HEX, key_out, KEY_LEN);
+	if (source)
+		*source = KEY_SOURCE_MACRO;
+	return ret;
 }
