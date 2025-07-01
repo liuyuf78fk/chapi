@@ -34,9 +34,6 @@
 #define MAX_PORT 65535
 #define MIN_PORT 1
 
-#ifndef DEFAULT_LOG_LEVEL
-#define DEFAULT_LOG_LEVEL 2
-#endif
 
 static char *get_config_path(void)
 {
@@ -128,7 +125,7 @@ int load_config(struct chapi_config *cfg)
 	cfg->rate_limit_window = RATE_LIMIT_WINDOW;
 	cfg->rate_limit_count = RATE_LIMIT_COUNT;
 	cfg->max_clients = MAX_CLIENTS;
-	cfg->log_level = DEFAULT_LOG_LEVEL;
+	cfg->log_level = LOG_LEVEL_DEFAULT;
 #ifdef ENABLE_RATE_LIMIT
 	cfg->enable_rate_limit = 1;
 #else
