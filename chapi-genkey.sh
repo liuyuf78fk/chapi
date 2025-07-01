@@ -1,6 +1,34 @@
 #!/usr/bin/env bash
 #
-# chapi-genkey — generate a ChaCha20-Poly1305 256-bit shared key
+# CHAPI - ChaCha20-based Host Address Protocol over UDP
+#
+# Description:
+#   Generates a secure ChaCha20-Poly1305 key (256-bit) for CHAPI encryption.
+#   The key is saved to /etc/chapi/chapi.key with restricted permissions.
+#   If the keyfile exists, prompts for overwrite confirmation.
+#
+# Usage:
+#   ./chapi-genkey.sh
+#
+# Dependencies:
+#   - openssl (for cryptographically secure key generation)
+#
+# Copyright (C) 2025 Liu Yu <f78fk@live.com>
+#
+# This file is part of CHAPI.
+#
+# CHAPI is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# CHAPI is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with CHAPI. If not, see <https://www.gnu.org/licenses/>.
 
 set -euo pipefail
 
