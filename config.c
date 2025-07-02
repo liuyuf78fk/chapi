@@ -70,21 +70,21 @@ static int handler(void *user, const char *section, const char *name,
 		cfg->port = (int)port;
 	} else if (strcmp(name, "rate_limit_window") == 0) {
 		long val = strtol(value, NULL, 10);
-		if (val <= 0 || val > 3600) {
+		if (val <= 0 || val > 300) {
 			LOG_ERR_MSG("Invalid rate_limit_window: %s", value);
 			return 0;
 		}
 		cfg->rate_limit_window = (int)val;
 	} else if (strcmp(name, "rate_limit_count") == 0) {
 		long val = strtol(value, NULL, 10);
-		if (val <= 0 || val > 1000) {
+		if (val <= 0 || val > 100) {
 			LOG_ERR_MSG("Invalid rate_limit_count: %s", value);
 			return 0;
 		}
 		cfg->rate_limit_count = (int)val;
 	} else if (strcmp(name, "max_clients") == 0) {
 		long val = strtol(value, NULL, 10);
-		if (val < 1 || val > 100000) {
+		if (val < 1 || val > 102400) {
 			LOG_ERR_MSG("Invalid max_clients: %s", value);
 			return 0;
 		}
