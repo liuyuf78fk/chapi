@@ -63,42 +63,85 @@ cd chapi
 
 ### 3. Generate a shared ChaCha20-Poly1305 key
 
-```
+```bash
 ./chapi-genkey.sh
 ```
 
-You will see output like:
+Output example:
 
 ```
-Generating ChaCha20-Poly1305 shared key (256-bit)...
-
-Please copy the following content into the KEY_HEX macro definition in common.h:
-
-#define KEY_HEX "5b766b1ea5e65ca55d33feac34c5f35da501b019ff85e0ab1be558c11a8e75d3"
+Generating ChaCha20-Poly1305 key (256 bits)...
+Key has been saved to /etc/chapi/chapi.key
 ```
 
-Open `common.h` and replace the `KEY_HEX` macro with the generated value
+> If you prefer static embedding, copy the printed key into the `KEY_HEX` macro in `common.h`.
 
-### 4. Configure settings in `common.h`
+---
+
+### 4. Configuration Methods
+
+Since **June 30, 2025**, the server supports configuration via external files.
+
+By default, `make install` will create and install the following:
+
+- `/etc/chapi/chapi.conf` — main INI configuration file
+- `/etc/chapi/chapi.key` — encryption key used at runtime
+
+---
+
+#### Option 1: File-based Configuration (Recommended)
+
+Example `/etc/chapi/chapi.conf`:
+
+```ini
+# ============================
+# Network Settings
+# ============================
+bind_address = 0.0.0.0
+port = 10000
+
+# ============================
+# Rate Limiting Settings
+# ============================
+enable_rate_limit = 0
+rate_limit_window = 1
+rate_limit_count = 1
+max_clients = 1024
+
+# ============================
+# Logging Settings
+# ============================
+log_level = 2
+```
+
+If `/etc/chapi/chapi.key` exists, it will be used as the shared key.
+
+---
+
+#### Option 2: Static Macro Configuration (Legacy Compatible)
+
+If you want to avoid external files and embed configuration directly, you can still modify `common.h` manually:
 
 ```c
-#define SERVER_PORT 10000
-#define KEY_HEX "5b766b1ea5e65ca55d33feac34c5f35da501b019ff85e0ab1be558c11a8e75d3"
-#define NONCE_LEN crypto_aead_chacha20poly1305_IETF_NPUBBYTES
-#define KEY_LEN crypto_aead_chacha20poly1305_IETF_KEYBYTES
-#define MAC_LEN crypto_aead_chacha20poly1305_IETF_ABYTES
-#define MAX_MSG_LEN 256
-
-#define SERVER_BIND_ADDR   "0.0.0.0"
-#define SERVER_PUBLIC_ADDR "127.0.0.1"
-
-//#define ENABLE_RATE_LIMIT
-#define RATE_LIMIT_WINDOW 6    // in seconds
+#define DEFAULT_PORT 10000
+#define KEY_HEX "your_generated_key_here"
+#define DEFAULT_BIND_ADDR   "0.0.0.0"
+#define DEFAULT_SERVER_ADDR "127.0.0.1"
+#define ENABLE_RATE_LIMIT
+#define RATE_LIMIT_WINDOW 1
 #define RATE_LIMIT_COUNT 1
 #define MAX_CLIENTS 1024
-
-#define LOG_LEVEL 1            // 0=off, 1=errors only, 2=verbose
+#define LOG_LEVEL_DEFAULT 2
 ```
+
+To enforce macro-only behavior, delete the config and key files:
+
+```bash
+sudo rm /etc/chapi/chapi.conf
+sudo rm /etc/chapi/chapi.key
+```
+
+> If config or key file exists, they override the macros.
 
 ---
 
@@ -119,11 +162,11 @@ sudo make install
 ```
 
 This will:
-
 - Create a dedicated system user `chapi` if it does not exist
 - Install binaries to `/usr/local/bin/`
-- Install and enable the systemd service `chapi-server.service`
-- Start the service immediately
+- Install default configuration to `/etc/chapi/`
+- Enable and start the `chapi-server.service`
+- Set proper permissions on config and key
 
 ### For the client only:
 
@@ -135,33 +178,98 @@ This installs only the client binary
 
 ---
 
-## Running and Logs
-
-The server runs as a systemd service named `chapi-server.service`
-
-Check server logs with:
+## Client Usage
 
 ```bash
-sudo journalctl -u chapi-server.service -f
+chapi-client <server-address> [-p <port>]
 ```
+
+- `<server-address>` can be an IP address or domain name
+- `-p <port>` specifies a custom port
+
+Example:
+
+```bash
+chapi-client example.com -p 60000
+```
+
+> If the client is run without any arguments, it uses the `DEFAULT_SERVER_ADDR` and `DEFAULT_PORT` values defined in `common.h`.
 
 ---
 
-## Usage
+## Client Configuration
 
-Run the client (example):
+The client supports two modes of key handling:
 
-```bash
-chapi-client
+---
+
+### Option 1: File-based Key Loading (Default)
+
+By default, the client will load the ChaCha20-Poly1305 key from:
+
+```
+/etc/chapi/chapi.key
 ```
 
-It will query the server and print your public IP or an error
+This allows secure key distribution without recompilation.
+
+---
+
+### Option 2: Static Macro Key (Embedded in Source)
+
+If you prefer to embed the key statically in the source code:
+
+1. Open `common.h`  
+2. Set the `KEY_HEX` macro manually with your key string：
+
+```c
+#define KEY_HEX "your_generated_key_here"
+```
+
+Then, delete the key file to enforce macro mode:
+
+```bash
+sudo rm /etc/chapi/chapi.key
+```
+
+> If the key file exists, the client will **always** load from the file first
+
+---
+
+## Summary: Configuration and Key Priority
+
+| Component | File                             | Description                          | Priority |
+|-----------|----------------------------------|--------------------------------------|----------|
+| Server    | `/etc/chapi/chapi.conf`          | Server INI config file               | High     |
+| Server    | `/etc/chapi/chapi.key`           | Key file for encryption              | High     |
+| Client    | `/etc/chapi/chapi.key`           | Key file for encryption              | High     |
+| All       | Macros in `common.h`             | Fallback if above files are missing  | Fallback |
+
+---
+
+## Security Notes
+
+- Ensure key file has proper permissions:
+
+```bash
+sudo chmod 600 /etc/chapi/chapi.key
+```
+
+- Do not hardcode production keys in public repositories
 
 ---
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file for details
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0).  
+See the [LICENSE](LICENSE) file for full details.
+
+### Third-party components
+
+This project includes the [inih](https://github.com/benhoyt/inih) library by Ben Hoyt,  
+which is licensed under the New BSD License. See [inih-LICENSE.txt](./inih-LICENSE.txt) for details.
+
+This project also links to the [libsodium](https://github.com/jedisct1/libsodium) cryptographic library,
+which is licensed under the [ISC License](https://github.com/jedisct1/libsodium/blob/master/LICENSE).
 
 ---
-
