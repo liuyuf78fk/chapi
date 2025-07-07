@@ -33,6 +33,8 @@
 
 #include "common.h"
 
+#define DEFAULT_MAX_RETRIES 2
+
 int resolve_server_address(const char *host, int port,
 			   struct sockaddr_in *out_addr)
 {
@@ -106,6 +108,8 @@ int main(int argc, char *argv[])
 
 	int server_port = DEFAULT_PORT;
 	int ipv6_flag = 0;
+	int retry_count = 0;
+	const int max_retries = DEFAULT_MAX_RETRIES;
 
 	static struct option long_options[] = {
 		{"version", no_argument, 0, 'v'},
@@ -193,6 +197,8 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
+send_again:
+
 	unsigned char nonce[NONCE_LEN];
 	randombytes_buf(nonce, NONCE_LEN);
 
@@ -245,6 +251,13 @@ int main(int argc, char *argv[])
 	if (bytes_received < 0) {
 		if (errno == EAGAIN || errno == EWOULDBLOCK) {
 			fprintf(stderr, "The server is unresponsive\n");
+			if (retry_count < max_retries) {
+				fprintf(stderr, "retrying %d/%d ...\n",
+					retry_count + 1, max_retries);
+				retry_count++;
+				if (sendbuf) free(sendbuf);
+				goto send_again;
+			}
 		} else {
 			perror("recvfrom error");
 		}
