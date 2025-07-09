@@ -255,8 +255,6 @@ sudo rm /etc/chapi/chapi.key
 sudo chmod 600 /etc/chapi/chapi.key
 ```
 
-- Do not hardcode production keys in public repositories
-
 ---
 
 ## License
