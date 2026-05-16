@@ -6,7 +6,7 @@
 
 Many applications and systems need to know their public IP address — yet most existing solutions rely on full HTTP/TLS stacks, often requiring TLS handshakes and HTTP headers just to return a small response such as `1.2.3.4`.
 
-**CHAPI** was created as an experiment in building a lightweight encrypted UDP-based alternative for simple public IP discovery in self-hosted, embedded, and low-overhead environments.
+**CHAPI** CHAPI started as a small experiment to see how lightweight a public IP query protocol could be without relying on HTTP or TLS.
 
 It allows trusted clients sharing a pre-distributed key to query a server over encrypted UDP and receive a minimal encrypted response containing the detected public IP address.
 
