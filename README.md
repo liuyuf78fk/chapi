@@ -268,7 +268,7 @@ If you are deploying this on a public-facing server, please be aware of the foll
 - **Shared Key Architecture (PSK):** All clients and the server share the same symmetric key. If one client node is compromised, the attacker can spoof requests or decrypt captured traffic within that specific deployment.
 
 **Mitigation Recommendations:**
-If you must expose CHAPI to the public internet, it is highly recommended to offload traffic protection to the Linux kernel. Use **iptables** or **nftables** to establish an IP whitelist or restrict UDP connection rates before the packets even reach the CHAPI application layer.
+If you must expose CHAPI to the public internet, it is recommended to use iptables or nftables to restrict which hosts can access the service.
 
 - Ensure your key file always has strict permissions:
 
