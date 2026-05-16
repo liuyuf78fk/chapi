@@ -1,26 +1,28 @@
 # CHAPI
 
-**CHAPI** (ChaCha20-based Host Address Protocol over UDP) is a minimalist, secure, and efficient protocol to query your public IP address over encrypted UDP using ChaCha20-Poly1305
+**CHAPI** (ChaCha20-based Host Address Protocol over UDP) is a lightweight encrypted UDP-based protocol for querying your public IP address using ChaCha20-Poly1305 authenticated encryption via libsodium.
 
 ## Why CHAPI?
 
-Many applications and systems need to know their public IP address — yet most solutions rely on full HTTPS stacks (such as nginx combined with curl), requiring heavy TLS handshakes and HTTP headers just to return a tiny string like 1.2.3.4. (Frustrated by this unnecessary overhead, I developed CHAPI.)
+Many applications and systems need to know their public IP address — yet most existing solutions rely on full HTTP/TLS stacks, often requiring TLS handshakes and HTTP headers just to return a small response such as `1.2.3.4`.
 
-**CHAPI** is a lightweight alternative designed for self-hosters, embedded devices, and low-overhead environments. It lets trusted clients query the server over encrypted UDP, returning only what’s needed — your IP
+**CHAPI** was created as an experiment in building a lightweight encrypted UDP-based alternative for simple public IP discovery in self-hosted, embedded, and low-overhead environments.
+
+It allows trusted clients sharing a pre-distributed key to query a server over encrypted UDP and receive a minimal encrypted response containing the detected public IP address.
 
 ---
 
 ## Features & Performance
 
-- **ChaCha20-Poly1305 encryption** — secure by default, without OpenSSL or TLS bloat  
-- **High-performance UDP server** — extremely lightweight and fast  
+- **ChaCha20-Poly1305 authenticated encryption** using libsodium  
+- **Lightweight UDP server implementation** with minimal protocol overhead 
 - **Single-threaded design** — suitable for embedded or minimal Linux environments  
-- **Minimal overhead** — no TLS handshakes, no HTTP headers, just encrypted IP delivery
+- **Minimal packet overhead** — no HTTP headers or TLS negotiation
 - **One-RTT response** — client gets encrypted IP reply in a single round-trip
 - **Rate limiting support** — prevent abuse with per-IP throttling (optional via macro)  
-- **Resilient to attacks** — encrypted communication, strict format validation  
+- **Basic validation and malformed packet handling**  
 - **Low memory usage** — chapi-server uses ~1.2 MB RAM on Linux (RSS)
-- **Proven fast in benchmarks** — with 50 concurrent clients, a total of 1000 encrypted requests took approximately 1.5 seconds
+- **Small codebase** intended for learning, experimentation, and lightweight deployments
 
 ### Benchmark Example
 
@@ -32,8 +34,14 @@ Failures: 0
 Total time: 1.5 seconds
 Average time per request: 0.0015 seconds (1.5 ms)
 ```
-This demonstrates that even with a single-threaded design on a single-core VPS, CHAPI can achieve this level of performance
-This makes it more efficient than HTTP+TLS solutions, especially in bandwidth-sensitive or embedded environments
+Example benchmark results obtained on a low-end VPS under light test conditions.
+
+Actual performance depends on:
+- CPU architecture
+- system tuning
+- network conditions
+- packet size
+- concurrent traffic load
 
 
 ---
@@ -247,9 +255,22 @@ sudo rm /etc/chapi/chapi.key
 
 ---
 
-## Security Notes
+## Security Notes & Known Limitations
 
-- Ensure key file has proper permissions:
+**Disclaimer: Scope & Deployment**  
+CHAPI is designed as a minimalist tool for personal use, homelabs, and trusted low-overhead environments. It is **NOT** currently hardened against sophisticated UDP adversarial attacks (e.g., distributed UDP floods or replay attacks) on the open internet.
+
+If you are deploying this on a public-facing server, please be aware of the following known architectural limitations:
+
+- **Fixed-Size Rate Limiter Table:** The current rate-limiting implementation uses a fixed-size array (`MAX_CLIENTS`). Once the table is full, new IP addresses are no longer tracked by the limiter.
+- **Linear Search Overhead:** The rate limiter checks incoming IPs using an `O(N)` linear search. In the event of a severe UDP flood using randomized spoofed source IPs, this may cause high CPU utilization on a single thread.
+- **Basic Anti-Replay:** The server currently only caches the *most recent* Nonce to prevent immediate consecutive replays. It does not employ a sliding window or payload timestamps, meaning it could theoretically be bypassed by alternating replayed packets.
+- **Shared Key Architecture (PSK):** All clients and the server share the same symmetric key. If one client node is compromised, the attacker can spoof requests or decrypt captured traffic within that specific deployment.
+
+**Mitigation Recommendations:**
+If you must expose CHAPI to the public internet, it is highly recommended to offload traffic protection to the Linux kernel. Use **iptables** or **nftables** to establish an IP whitelist or restrict UDP connection rates before the packets even reach the CHAPI application layer.
+
+- Ensure your key file always has strict permissions:
 
 ```bash
 sudo chmod 600 /etc/chapi/chapi.key
