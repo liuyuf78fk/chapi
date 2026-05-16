@@ -1,6 +1,6 @@
 # CHAPI
 
-**CHAPI** (ChaCha20-based Host Address Protocol over UDP) is a lightweight encrypted UDP-based protocol for querying your public IP address using ChaCha20-Poly1305 authenticated encryption via libsodium.
+**CHAPI** is a lightweight encrypted UDP-based protocol for querying your public IP address using ChaCha20-Poly1305 authenticated encryption via libsodium.
 
 ## Why CHAPI?
 
