@@ -255,7 +255,7 @@ sudo rm /etc/chapi/chapi.key
 
 ---
 
-## Security Notes & Known Limitations
+## Known Limitations
 
 **Disclaimer: Scope & Deployment**  
 CHAPI is designed as a minimalist tool for personal use, homelabs, and trusted low-overhead environments. It is **NOT** currently hardened against sophisticated UDP adversarial attacks (e.g., distributed UDP floods or replay attacks) on the open internet.
