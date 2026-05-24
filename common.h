@@ -48,7 +48,7 @@
 
 #define LOG_LEVEL_DEFAULT 2	// 0=off, 1=errors only, 2=verbose
 
-#define KEY_HEX "a01af296150f544a0bb1033731ca243d03628e20bb8ce89a14631b14c6a3551a"
+#define KEY_HEX "YOUR_KEY_HERE"
 
 #define NONCE_LEN crypto_aead_chacha20poly1305_IETF_NPUBBYTES
 #define KEY_LEN crypto_aead_chacha20poly1305_IETF_KEYBYTES
